@@ -1,0 +1,25 @@
+{
+  "name": "open-cometa",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Open-source community interface for Cometa farms on Algorand. Withdraw stakes and claim rewards directly against the on-chain contracts. Not affiliated with Cometa.",
+  "scripts": {
+    "dev": "bun run src/server.ts",
+    "build": "bun build src/app.ts --outdir public/dist --target browser --minify --sourcemap"
+  },
+  "dependencies": {
+    "@txnlab/use-wallet": "^4.6.0",
+    "@perawallet/connect": "^1.4.1",
+    "@blockshake/defly-connect": "^1.2.0",
+    "@walletconnect/sign-client": "^2.23.4",
+    "@walletconnect/modal": "^2.7.0",
+    "@agoralabs-sh/avm-web-provider": "^1.7.0",
+    "lute-connect": "^1.6.3",
+    "algosdk": "^3.5.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.6.0"
+  }
+}
