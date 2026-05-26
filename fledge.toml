@@ -1,0 +1,24 @@
+# fledge.toml — project task definitions
+# Docs: https://github.com/CorvidLabs/fledge
+
+[tasks]
+dev = "bun run src/server.ts"
+build = "bun build src/app.ts --outdir public/dist --target browser --format esm --minify --sourcemap=external"
+
+[tasks.install]
+cmd = "bun install --frozen-lockfile"
+description = "Install dependencies"
+
+[tasks.typecheck]
+cmd = "bun x tsc --noEmit"
+description = "Run TypeScript type checking"
+
+[tasks.size]
+cmd = "ls -l public/dist/app.js | awk '{ size=$5; if (size>5242880) { print \"FAIL: bundle is \" size \" bytes (>5MB)\"; exit 1 } else { printf \"OK: bundle %.2f MB\\n\", size/1048576 } }'"
+description = "Assert the production bundle stays under 5MB"
+deps = ["build"]
+
+[tasks.ci]
+cmd = "echo 'ci complete'"
+description = "Run full CI checks (typecheck + build + size budget)"
+deps = ["install", "typecheck", "size"]

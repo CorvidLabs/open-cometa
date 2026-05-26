@@ -35,9 +35,9 @@ export function renderAccount(address: string, walletName: string, algoBalance: 
 }
 
 export function clearAccount(): void {
-    $("addressDisplay").textContent = "—";
-    $("walletDisplay").textContent = "—";
-    $("balanceDisplay").textContent = "— ALGO";
+    $("addressDisplay").textContent = "";
+    $("walletDisplay").textContent = "";
+    $("balanceDisplay").textContent = "0 ALGO";
 }
 
 export interface PositionAction {

@@ -6,8 +6,8 @@
     <meta name="color-scheme" content="dark light" />
     <meta name="theme-color" content="#0f1115" />
     <title>Open Cometa</title>
-    <meta name="description" content="An open community interface for Cometa farms on Algorand. Withdraw stakes and claim rewards directly against the on-chain contracts." />
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23ffd27a'/%3E%3Cstop offset='1' stop-color='%234f8cff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M3 29 L18 14 L24 8 M14 18 L20 24' stroke='url(%23g)' stroke-width='3' stroke-linecap='round' fill='none'/%3E%3Ccircle cx='23' cy='9' r='4' fill='%23ffd27a'/%3E%3C/svg%3E" />
+    <meta name="description" content="An open community interface for Cometa farms on Algorand. Read your positions on-chain and withdraw when you're ready." />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M3 29 L18 14 L24 8' stroke='%23ffd27a' stroke-width='3' stroke-linecap='round' fill='none'/%3E%3Ccircle cx='23' cy='9' r='4' fill='%23ffd27a'/%3E%3C/svg%3E" />
     <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
@@ -15,13 +15,7 @@
         <div class="wrap">
             <a class="brand" href="./" aria-label="Open Cometa home">
                 <svg class="brand__mark" width="22" height="22" viewBox="0 0 32 32" aria-hidden="true">
-                    <defs>
-                        <linearGradient id="cometa-grad" x1="0" y1="0" x2="1" y2="1">
-                            <stop offset="0" stop-color="currentColor" stop-opacity="0.4"/>
-                            <stop offset="1" stop-color="currentColor"/>
-                        </linearGradient>
-                    </defs>
-                    <path d="M3 29 L18 14 L24 8" stroke="url(#cometa-grad)" stroke-width="3" stroke-linecap="round" fill="none"/>
+                    <path d="M3 29 L18 14 L24 8" stroke="currentColor" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.5"/>
                     <circle cx="23" cy="9" r="4" fill="currentColor"/>
                 </svg>
                 <span class="brand__name">open cometa</span>
@@ -34,22 +28,23 @@
         <div class="banner" role="note">
             <span class="banner__dot" aria-hidden="true"></span>
             <span>
-                Not affiliated with Cometa. The page only talks to the existing Cometa
-                contracts on Algorand &mdash; your keys never leave your wallet.
+                Community-built. Not affiliated with Cometa. The page only reads
+                Algorand and asks your wallet to sign transactions you can review first.
             </span>
         </div>
 
         <section class="hero">
-            <h1>Your Cometa positions, <em>without</em> the broken site.</h1>
+            <h1>Your Cometa positions, on-chain.</h1>
             <p class="hero__sub">
-                Connect, see what's still on-chain, pull it back. The page reads
-                directly from Algorand and only signs what you approve.
+                See what you have staked, claim rewards, withdraw when you want to.
+                Everything happens directly between your wallet and the Cometa
+                contracts on Algorand.
             </p>
         </section>
 
         <section class="card" id="sectionConnect">
             <h2>Connect</h2>
-            <p class="card__sub">Use the same wallet you used with Cometa.</p>
+            <p class="card__sub">Choose the wallet that holds your Cometa positions.</p>
 
             <div class="wallets" id="walletButtons">
                 <button class="wallet" type="button" data-wallet="pera" style="--wallet-color:#ffee55">
@@ -95,11 +90,11 @@
             <div class="account">
                 <div class="account__info">
                     <div class="account__label">Signed in</div>
-                    <div class="account__addr" id="addressDisplay" data-full="">&mdash;</div>
+                    <div class="account__addr" id="addressDisplay" data-full=""></div>
                     <div class="account__meta">
-                        <span id="walletDisplay">&mdash;</span>
-                        ·
-                        <span id="balanceDisplay">&mdash; ALGO</span>
+                        <span id="walletDisplay"></span>
+                        <span class="account__dot"></span>
+                        <span id="balanceDisplay">0 ALGO</span>
                     </div>
                 </div>
                 <div class="account__actions">
@@ -113,19 +108,19 @@
         <section class="card" id="sectionPositions" hidden>
             <div class="card__head">
                 <h2>Positions</h2>
-                <span class="muted" id="positionsCountChip">&mdash;</span>
+                <span class="muted" id="positionsCountChip"></span>
             </div>
 
             <ul class="positions" id="positionsList" role="list"></ul>
 
             <div class="empty" id="positionsEmpty" hidden>
                 <p>No Cometa positions on this address.</p>
-                <p class="muted">If you staked from another account, try connecting that one.</p>
+                <p class="muted">If you staked from a different account, try connecting that one.</p>
             </div>
 
             <div class="loading" id="positionsLoading" hidden>
                 <div class="loading__spinner" aria-hidden="true"></div>
-                <p>Reading on-chain state&hellip;</p>
+                <p>Reading on-chain state.</p>
             </div>
         </section>
 
@@ -133,47 +128,51 @@
             <details class="faq">
                 <summary>Is this safe to use?</summary>
                 <p>
-                    The page is static and open source. It never sees your seed phrase. Every
-                    transaction is built locally, simulated against algod first to catch
-                    failures, then handed to your wallet to review before you sign.
+                    The page is static and open source. It never sees your seed
+                    phrase. Every transaction is built locally, simulated against
+                    Algorand first so failures show up as a message instead of a
+                    wallet prompt, and then handed to your wallet to review before
+                    you sign.
                 </p>
                 <p>
-                    The App IDs shown on each position match the contracts Cometa deployed.
-                    Verify any of them on
+                    The App ID on each position matches the contracts Cometa
+                    deployed. You can verify any of them on
                     <a href="https://allo.info/" target="_blank" rel="noreferrer noopener">allo.info</a>
                     before signing.
                 </p>
             </details>
 
             <details class="faq">
-                <summary>Why does my withdraw fail?</summary>
+                <summary>Why might a withdraw fail?</summary>
                 <p>
-                    Usually it&rsquo;s a contract lock period that hasn&rsquo;t elapsed, or
-                    not enough ALGO to cover the inner-transaction fee bump (~0.004 ALGO).
-                    The simulate step catches both and shows the on-chain error before you
-                    sign anything.
+                    Usually a contract lock period that has not elapsed yet, or
+                    not quite enough ALGO to cover the inner-transaction fee
+                    bump (about 0.004 ALGO). The simulate step catches both and
+                    shows the on-chain reason before your wallet pops.
                 </p>
             </details>
 
             <details class="faq">
                 <summary>Who built this?</summary>
                 <p>
-                    <a href="https://corvidlabs.xyz/" target="_blank" rel="noreferrer noopener">CorvidLabs</a>
-                    and friends in the Algorand community. The code is at
-                    <a href="https://github.com/CorvidLabs/open-cometa" target="_blank" rel="noreferrer noopener">github.com/CorvidLabs/open-cometa</a>
-                    &mdash; PRs welcome.
+                    <a href="https://github.com/0xLeif" target="_blank" rel="noreferrer noopener">0xLeif</a>
+                    at
+                    <a href="https://corvidlabs.xyz/" target="_blank" rel="noreferrer noopener">CorvidLabs</a>.
+                    The code is open at
+                    <a href="https://github.com/CorvidLabs/open-cometa" target="_blank" rel="noreferrer noopener">github.com/CorvidLabs/open-cometa</a>.
+                    Issues and PRs welcome.
                 </p>
             </details>
         </section>
 
         <footer class="footer">
-            <a class="footer__brand" href="https://corvidlabs.xyz/" target="_blank" rel="noreferrer noopener">
-                <span aria-hidden="true">✦</span> built by CorvidLabs
+            <a class="footer__brand" href="https://github.com/0xLeif" target="_blank" rel="noreferrer noopener">
+                <span aria-hidden="true">✦</span> by 0xLeif
             </a>
-            <span class="footer__sep" aria-hidden="true">·</span>
+            <span class="footer__sep" aria-hidden="true">/</span>
+            <a href="https://corvidlabs.xyz/" target="_blank" rel="noreferrer noopener">CorvidLabs</a>
+            <span class="footer__sep" aria-hidden="true">/</span>
             <a href="https://github.com/CorvidLabs/open-cometa" target="_blank" rel="noreferrer noopener">source</a>
-            <span class="footer__sep" aria-hidden="true">·</span>
-            <a href="https://github.com/CorvidLabs/open-cometa/issues" target="_blank" rel="noreferrer noopener">issues</a>
         </footer>
     </main>
 
@@ -182,14 +181,14 @@
     <template id="positionTemplate">
         <li class="position" data-app-id="">
             <div class="position__main">
-                <div class="position__name" data-field="desc">&mdash;</div>
+                <div class="position__name" data-field="desc"></div>
                 <div class="position__meta">
-                    <span class="position__amount" data-field="staked">&mdash;</span>
+                    <span class="position__amount" data-field="staked"></span>
                     <span class="position__sep">·</span>
-                    <span data-field="reward">&mdash;</span>
+                    <span data-field="reward"></span>
                     <span class="position__sep">·</span>
                     <a class="position__link" data-field="explorer" target="_blank" rel="noreferrer noopener">
-                        app <span data-field="appId">&mdash;</span> ↗
+                        app <span data-field="appId"></span> ↗
                     </a>
                     <span class="position__lock" data-field="lock"></span>
                 </div>
@@ -208,8 +207,8 @@
     <template id="toastTemplate">
         <div class="toast" data-state="info" role="status">
             <div class="toast__body">
-                <p class="toast__title" data-field="title">&mdash;</p>
-                <p class="toast__msg" data-field="msg">&mdash;</p>
+                <p class="toast__title" data-field="title"></p>
+                <p class="toast__msg" data-field="msg"></p>
                 <a class="toast__link" data-field="link" target="_blank" rel="noreferrer noopener" hidden>view transaction ↗</a>
             </div>
             <button class="toast__close" type="button" aria-label="Dismiss">×</button>
