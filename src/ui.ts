@@ -65,9 +65,11 @@ export function renderPositions(
     if (positions.length === 0) {
         countChip.textContent = "";
     } else if (active === 0) {
-        countChip.textContent = `${positions.length} found · rewards only`;
+        countChip.textContent = `${positions.length} idle · rewards only`;
+    } else if (active === positions.length) {
+        countChip.textContent = `${active} active`;
     } else {
-        countChip.textContent = `${active} with stake · ${positions.length} total`;
+        countChip.textContent = `${active} active · ${positions.length - active} idle`;
     }
 
     if (positions.length === 0) {
@@ -85,7 +87,7 @@ export function renderPositions(
         typeEl.textContent = pos.farm.type.toUpperCase();
         if (pos.farm.type === "distribution") typeEl.classList.add("tag--distribution");
         setField(node, "appId", String(pos.farm.id));
-        setField(node, "desc", pos.farm.desc || `Contract ${pos.farm.id}`);
+        setField(node, "desc", pos.farm.desc ?? `Cometa contract ${pos.farm.id}`);
         setField(node, "version", `v${pos.farm.version}`);
 
         const stakeDecimals = guessStakeDecimals(pos.farm);
@@ -96,10 +98,10 @@ export function renderPositions(
         );
 
         const rewardText = pos.farm.rewardName
-            ? `Earns ${pos.farm.rewardName}`
+            ? `earns ${pos.farm.rewardName}`
             : pos.farm.reward
-              ? `Earns asset ${pos.farm.reward}`
-              : "Rewards on withdraw";
+              ? `earns asset ${pos.farm.reward}`
+              : "rewards on withdraw";
         setField(node, "reward", rewardText);
 
         const latestRound = window.__latestRound__;

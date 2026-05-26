@@ -4,7 +4,7 @@ import { WalletId } from "@txnlab/use-wallet";
 import { algod, fetchAccount } from "./algorand.ts";
 import { ALL_FARMS } from "./farms.ts";
 import { findCometaPositions, type Position } from "./positions.ts";
-import { buildCloseOutTxn, buildWithdrawAndClaim, getCallTemplate } from "./cometa.ts";
+import { buildCloseOutTxn, buildWithdrawAndClaim, getCallTemplate, simulateGroup } from "./cometa.ts";
 import { WalletSession } from "./wallet.ts";
 import {
     bindCopyAddress,
@@ -153,8 +153,8 @@ async function onWithdraw(appId: number): Promise<void> {
     if (!pos) return;
 
     const pending = toast({
-        title: `Extracting · App ${appId}`,
-        msg: "Building withdraw + claim transactions and asking your wallet to sign.",
+        title: `Withdraw · App ${appId}`,
+        msg: "Checking the transaction against the network before signing…",
         state: "pending",
     });
 
@@ -169,14 +169,32 @@ async function onWithdraw(appId: number): Promise<void> {
             optedInAssets,
         });
 
+        const sim = await simulateGroup(txns);
+        if (!sim.ok) {
+            pending.dismiss();
+            toast({
+                title: "Network rejected the call",
+                msg: sim.error ?? "Simulation failed. Nothing was signed.",
+                state: "error",
+            });
+            return;
+        }
+
+        pending.dismiss();
+        const signing = toast({
+            title: `Withdraw · App ${appId}`,
+            msg: "Approve in your wallet to send the group transaction.",
+            state: "pending",
+        });
+
         const signed = await wallet.signTransactions(txns);
+        signing.dismiss();
         if (signed.length === 0) throw new Error("Wallet did not return signed transactions.");
 
         const { txid } = await algod.sendRawTransaction(signed).do();
-        pending.dismiss();
         toast({
-            title: "Submitted",
-            msg: `Group of ${txns.length} transactions sent. Waiting for confirmation…`,
+            title: "Sent",
+            msg: `Waiting for confirmation on ${txns.length === 1 ? "transaction" : `${txns.length} transactions`}…`,
             state: "pending",
             txId: txid,
             timeoutMs: 4000,
@@ -185,8 +203,8 @@ async function onWithdraw(appId: number): Promise<void> {
         await algosdk.waitForConfirmation(algod, txid, 8);
 
         toast({
-            title: "Extraction confirmed",
-            msg: `Your stake and rewards have been sent back to your wallet from app ${appId}.`,
+            title: "Done",
+            msg: `Your stake and rewards are back in your wallet.`,
             state: "success",
             txId: txid,
         });
@@ -195,7 +213,7 @@ async function onWithdraw(appId: number): Promise<void> {
     } catch (err) {
         pending.dismiss();
         const msg = decodeError(err);
-        toast({ title: "Extraction failed", msg, state: "error" });
+        toast({ title: "Withdraw failed", msg, state: "error" });
     }
 }
 
@@ -214,7 +232,7 @@ async function onClaim(appId: number): Promise<void> {
 
     const pending = toast({
         title: `Claim · App ${appId}`,
-        msg: "Building claim transaction and asking your wallet to sign.",
+        msg: "Checking the transaction against the network before signing…",
         state: "pending",
     });
 
@@ -229,12 +247,30 @@ async function onClaim(appId: number): Promise<void> {
             optedInAssets,
         });
 
-        const signed = await wallet.signTransactions(txns);
-        const { txid } = await algod.sendRawTransaction(signed).do();
+        const sim = await simulateGroup(txns);
+        if (!sim.ok) {
+            pending.dismiss();
+            toast({
+                title: "Network rejected the call",
+                msg: sim.error ?? "Simulation failed. Nothing was signed.",
+                state: "error",
+            });
+            return;
+        }
+
         pending.dismiss();
+        const signing = toast({
+            title: `Claim · App ${appId}`,
+            msg: "Approve in your wallet.",
+            state: "pending",
+        });
+
+        const signed = await wallet.signTransactions(txns);
+        signing.dismiss();
+        const { txid } = await algod.sendRawTransaction(signed).do();
         toast({
-            title: "Submitted",
-            msg: `Claim sent. Waiting for confirmation…`,
+            title: "Sent",
+            msg: `Waiting for confirmation…`,
             state: "pending",
             txId: txid,
             timeoutMs: 4000,
@@ -243,8 +279,8 @@ async function onClaim(appId: number): Promise<void> {
         await algosdk.waitForConfirmation(algod, txid, 8);
 
         toast({
-            title: "Claim confirmed",
-            msg: `Rewards claimed from app ${appId}.`,
+            title: "Claimed",
+            msg: `Rewards are back in your wallet.`,
             state: "success",
             txId: txid,
         });

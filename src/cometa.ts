@@ -231,6 +231,41 @@ export async function buildWithdrawAndClaim(params: {
     return { txns, rewardAssetId, stakeAssetId };
 }
 
+export interface SimulateResult {
+    ok: boolean;
+    error: string | null;
+    failedAt: number | null;
+}
+
+export async function simulateGroup(txns: ReadonlyArray<algosdk.Transaction>): Promise<SimulateResult> {
+    const signedTxns = txns.map((t) =>
+        algosdk.decodeSignedTransaction(algosdk.encodeUnsignedSimulateTransaction(t)),
+    );
+    const request = new algosdk.modelsv2.SimulateRequest({
+        allowEmptySignatures: true,
+        txnGroups: [
+            new algosdk.modelsv2.SimulateRequestTransactionGroup({ txns: signedTxns }),
+        ],
+    });
+    const response = await algod.simulateTransactions(request).do();
+    const group = response.txnGroups[0];
+    if (!group) return { ok: false, error: "No simulation result returned.", failedAt: null };
+    if (group.failureMessage) {
+        return {
+            ok: false,
+            error: cleanSimulateError(group.failureMessage),
+            failedAt: group.failedAt?.[0] !== undefined ? Number(group.failedAt[0]) : null,
+        };
+    }
+    return { ok: true, error: null, failedAt: null };
+}
+
+function cleanSimulateError(raw: string): string {
+    const m = raw.match(/logic eval error:\s*(.+?)(?:\.\s|$)/);
+    if (m) return m[1].trim();
+    return raw.replace(/^transaction\s+[A-Z0-9]+:\s*/i, "").trim();
+}
+
 export async function buildCloseOutTxn(params: {
     sender: string;
     appId: number;
