@@ -159,9 +159,14 @@ export function buildUnstakeTxn(p: BuildCallParams & { amount: bigint }): algosd
 
 export type TxnStep = "opt-in-reward" | "opt-in-stake" | "claim" | "unstake";
 
-export interface PositionWithdrawTxns {
+export interface TxnGroup {
     txns: algosdk.Transaction[];
     steps: TxnStep[];
+}
+
+export interface PositionWithdrawTxns {
+    groups: TxnGroup[];
+    allTxns: algosdk.Transaction[];
     rewardAssetId: number | null;
     stakeAssetId: number | null;
 }
@@ -178,11 +183,12 @@ export async function buildWithdrawAndClaim(params: {
     const stakeAssetId = template.foreignAssetsUnstake[0] ?? null;
     const rewardAssetId = template.foreignAssetsClaim[0] ?? null;
 
-    const txns: algosdk.Transaction[] = [];
-    const steps: TxnStep[] = [];
+    const groups: TxnGroup[] = [];
 
+    const optInTxns: algosdk.Transaction[] = [];
+    const optInSteps: TxnStep[] = [];
     if (rewardAssetId !== null && rewardAssetId !== 0 && !params.optedInAssets.has(rewardAssetId)) {
-        txns.push(
+        optInTxns.push(
             algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
                 sender: params.sender,
                 receiver: params.sender,
@@ -191,7 +197,7 @@ export async function buildWithdrawAndClaim(params: {
                 suggestedParams,
             }),
         );
-        steps.push("opt-in-reward");
+        optInSteps.push("opt-in-reward");
     }
     if (
         stakeAssetId !== null &&
@@ -199,7 +205,7 @@ export async function buildWithdrawAndClaim(params: {
         stakeAssetId !== rewardAssetId &&
         !params.optedInAssets.has(stakeAssetId)
     ) {
-        txns.push(
+        optInTxns.push(
             algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
                 sender: params.sender,
                 receiver: params.sender,
@@ -208,75 +214,98 @@ export async function buildWithdrawAndClaim(params: {
                 suggestedParams,
             }),
         );
-        steps.push("opt-in-stake");
+        optInSteps.push("opt-in-stake");
+    }
+    if (optInTxns.length > 0) {
+        if (optInTxns.length > 1) algosdk.assignGroupID(optInTxns);
+        groups.push({ txns: optInTxns, steps: optInSteps });
     }
 
-    txns.push(
-        buildClaimTxn({
-            sender: params.sender,
-            appId: params.appId,
-            template,
-            suggestedParams,
-        }),
-    );
-    steps.push("claim");
-
-    if (params.stakedAmount > 0n) {
-        txns.push(
-            buildUnstakeTxn({
+    // The Cometa farm contract asserts GroupSize == 1 at the end of every claim/unstake
+    // handler (load 0; +1; global GroupSize; ==; assert at pc=4058 on v17.2.5). Each
+    // app call must therefore be submitted in its own group — never bundled together.
+    groups.push({
+        txns: [
+            buildClaimTxn({
                 sender: params.sender,
                 appId: params.appId,
-                amount: params.stakedAmount,
                 template,
                 suggestedParams,
             }),
-        );
-        steps.push("unstake");
+        ],
+        steps: ["claim"],
+    });
+
+    if (params.stakedAmount > 0n) {
+        groups.push({
+            txns: [
+                buildUnstakeTxn({
+                    sender: params.sender,
+                    appId: params.appId,
+                    amount: params.stakedAmount,
+                    template,
+                    suggestedParams,
+                }),
+            ],
+            steps: ["unstake"],
+        });
     }
 
-    if (txns.length > 1) algosdk.assignGroupID(txns);
-
-    return { txns, steps, rewardAssetId, stakeAssetId };
+    const allTxns = groups.flatMap((g) => g.txns);
+    return { groups, allTxns, rewardAssetId, stakeAssetId };
 }
 
 export interface SimulateResult {
     ok: boolean;
     error: string | null;
-    failedAt: number | null;
+    failedGroupIndex: number | null;
     failedStep: TxnStep | null;
     rawFailure: string | null;
 }
 
-export async function simulateGroup(
-    txns: ReadonlyArray<algosdk.Transaction>,
-    steps?: ReadonlyArray<TxnStep>,
+export async function simulateGroups(
+    groups: ReadonlyArray<TxnGroup>,
 ): Promise<SimulateResult> {
-    const signedTxns = txns.map((t) =>
-        algosdk.decodeSignedTransaction(algosdk.encodeUnsignedSimulateTransaction(t)),
-    );
-    const request = new algosdk.modelsv2.SimulateRequest({
-        allowEmptySignatures: true,
-        txnGroups: [
-            new algosdk.modelsv2.SimulateRequestTransactionGroup({ txns: signedTxns }),
-        ],
-    });
-    const response = await algod.simulateTransactions(request).do();
-    const group = response.txnGroups[0];
-    if (!group) {
-        return { ok: false, error: "No simulation result returned.", failedAt: null, failedStep: null, rawFailure: null };
+    // Public mainnet algod nodes only accept one group per simulate request, so
+    // each group is simulated independently. That means later groups don't see
+    // the state changes from earlier ones (e.g. simulating "claim" before an
+    // opt-in is applied will report a "must optin" error). The fallout: skip
+    // anything that depends on a prior group's state.
+    for (let groupIndex = 0; groupIndex < groups.length; groupIndex++) {
+        const group = groups[groupIndex];
+        const signedTxns = group.txns.map((t) =>
+            algosdk.decodeSignedTransaction(algosdk.encodeUnsignedSimulateTransaction(t)),
+        );
+        const request = new algosdk.modelsv2.SimulateRequest({
+            allowEmptySignatures: true,
+            txnGroups: [
+                new algosdk.modelsv2.SimulateRequestTransactionGroup({ txns: signedTxns }),
+            ],
+        });
+        const response = await algod.simulateTransactions(request).do();
+        const result = response.txnGroups[0];
+        if (!result) {
+            return {
+                ok: false,
+                error: "No simulation result returned.",
+                failedGroupIndex: groupIndex,
+                failedStep: null,
+                rawFailure: null,
+            };
+        }
+        if (result.failureMessage) {
+            const failedAt = result.failedAt?.[0] !== undefined ? Number(result.failedAt[0]) : null;
+            const failedStep = failedAt !== null ? group.steps[failedAt] ?? null : null;
+            return {
+                ok: false,
+                error: cleanSimulateError(result.failureMessage),
+                failedGroupIndex: groupIndex,
+                failedStep,
+                rawFailure: result.failureMessage,
+            };
+        }
     }
-    if (group.failureMessage) {
-        const failedAt = group.failedAt?.[0] !== undefined ? Number(group.failedAt[0]) : null;
-        const failedStep = failedAt !== null && steps ? steps[failedAt] ?? null : null;
-        return {
-            ok: false,
-            error: cleanSimulateError(group.failureMessage),
-            failedAt,
-            failedStep,
-            rawFailure: group.failureMessage,
-        };
-    }
-    return { ok: true, error: null, failedAt: null, failedStep: null, rawFailure: null };
+    return { ok: true, error: null, failedGroupIndex: null, failedStep: null, rawFailure: null };
 }
 
 function cleanSimulateError(raw: string): string {
