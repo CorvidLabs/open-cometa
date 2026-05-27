@@ -4,7 +4,14 @@ import { WalletId } from "@txnlab/use-wallet";
 import { algod, fetchAccount } from "./algorand.ts";
 import { ALL_FARMS } from "./farms.ts";
 import { findCometaPositions, type Position } from "./positions.ts";
-import { buildCloseOutTxn, buildWithdrawAndClaim, getCallTemplate, simulateGroup, type SimulateResult } from "./cometa.ts";
+import {
+    buildCloseOutTxn,
+    buildWithdrawAndClaim,
+    getCallTemplate,
+    simulateGroups,
+    type SimulateResult,
+    type TxnGroup,
+} from "./cometa.ts";
 import type { Farm } from "./farms.ts";
 import { WalletSession } from "./wallet.ts";
 import {
@@ -141,84 +148,37 @@ async function scan(): Promise<void> {
 }
 
 async function onWithdraw(appId: number): Promise<void> {
-    if (!currentAccount) return;
-    if (currentAccount.readOnly) {
-        toast({
-            title: "Read-only mode",
-            msg: "Connect a wallet to sign and submit transactions.",
-            state: "info",
-        });
-        return;
-    }
-    const pos = positionsByApp.get(appId);
-    if (!pos) return;
-
-    const pending = toast({
-        title: `Withdraw · App ${appId}`,
-        msg: "Checking the transaction against the network before signing…",
-        state: "pending",
+    await runWithdrawFlow(appId, {
+        opLabel: "Withdraw",
+        includeUnstake: true,
+        signMsg: "Approve in your wallet — one signature covers every step.",
+        successTitle: "Done",
+        successMsg: "Your stake and rewards are back in your wallet.",
+        failureTitle: "Withdraw failed",
     });
-
-    try {
-        const account = await fetchAccount(currentAccount.address);
-        const optedInAssets = new Set(account.assets.map((a) => a.assetId));
-
-        const { txns, steps } = await buildWithdrawAndClaim({
-            sender: currentAccount.address,
-            appId,
-            stakedAmount: pos.staked,
-            optedInAssets,
-        });
-
-        const sim = await simulateGroup(txns, steps);
-        if (!sim.ok) {
-            pending.dismiss();
-            toast({
-                title: "Network rejected the call",
-                msg: explainSimulateError(sim, pos.farm),
-                state: "error",
-            });
-            return;
-        }
-
-        pending.dismiss();
-        const signing = toast({
-            title: `Withdraw · App ${appId}`,
-            msg: "Approve in your wallet to send the group transaction.",
-            state: "pending",
-        });
-
-        const signed = await wallet.signTransactions(txns);
-        signing.dismiss();
-        if (signed.length === 0) throw new Error("Wallet did not return signed transactions.");
-
-        const { txid } = await algod.sendRawTransaction(signed).do();
-        toast({
-            title: "Sent",
-            msg: `Waiting for confirmation on ${txns.length === 1 ? "transaction" : `${txns.length} transactions`}…`,
-            state: "pending",
-            txId: txid,
-            timeoutMs: 4000,
-        });
-
-        await algosdk.waitForConfirmation(algod, txid, 8);
-
-        toast({
-            title: "Done",
-            msg: `Your stake and rewards are back in your wallet.`,
-            state: "success",
-            txId: txid,
-        });
-
-        await scan();
-    } catch (err) {
-        pending.dismiss();
-        const msg = decodeError(err);
-        toast({ title: "Withdraw failed", msg, state: "error" });
-    }
 }
 
 async function onClaim(appId: number): Promise<void> {
+    await runWithdrawFlow(appId, {
+        opLabel: "Claim",
+        includeUnstake: false,
+        signMsg: "Approve in your wallet.",
+        successTitle: "Claimed",
+        successMsg: "Rewards are back in your wallet.",
+        failureTitle: "Claim failed",
+    });
+}
+
+interface WithdrawFlowOptions {
+    opLabel: string;
+    includeUnstake: boolean;
+    signMsg: string;
+    successTitle: string;
+    successMsg: string;
+    failureTitle: string;
+}
+
+async function runWithdrawFlow(appId: number, opts: WithdrawFlowOptions): Promise<void> {
     if (!currentAccount) return;
     if (currentAccount.readOnly) {
         toast({
@@ -232,7 +192,7 @@ async function onClaim(appId: number): Promise<void> {
     if (!pos) return;
 
     const pending = toast({
-        title: `Claim · App ${appId}`,
+        title: `${opts.opLabel} · App ${appId}`,
         msg: "Checking the transaction against the network before signing…",
         state: "pending",
     });
@@ -241,14 +201,17 @@ async function onClaim(appId: number): Promise<void> {
         const account = await fetchAccount(currentAccount.address);
         const optedInAssets = new Set(account.assets.map((a) => a.assetId));
 
-        const { txns, steps } = await buildWithdrawAndClaim({
+        const { groups, allTxns } = await buildWithdrawAndClaim({
             sender: currentAccount.address,
             appId,
-            stakedAmount: 0n,
+            stakedAmount: opts.includeUnstake ? pos.staked : 0n,
             optedInAssets,
         });
 
-        const sim = await simulateGroup(txns, steps);
+        const needsOptIn = groups.some((g) => g.steps.some((s) => s.startsWith("opt-in-")));
+        const sim = needsOptIn
+            ? { ok: true as const, error: null, failedGroupIndex: null, failedStep: null, rawFailure: null }
+            : await simulateGroups(groups);
         if (!sim.ok) {
             pending.dismiss();
             toast({
@@ -261,40 +224,78 @@ async function onClaim(appId: number): Promise<void> {
 
         pending.dismiss();
         const signing = toast({
-            title: `Claim · App ${appId}`,
-            msg: "Approve in your wallet.",
+            title: `${opts.opLabel} · App ${appId}`,
+            msg: opts.signMsg,
             state: "pending",
         });
 
-        const signed = await wallet.signTransactions(txns);
+        const signed = await wallet.signTransactions(allTxns);
         signing.dismiss();
-        const { txid } = await algod.sendRawTransaction(signed).do();
-        toast({
-            title: "Sent",
-            msg: `Waiting for confirmation…`,
-            state: "pending",
-            txId: txid,
-            timeoutMs: 4000,
-        });
+        if (signed.length !== allTxns.length) {
+            throw new Error("Wallet did not return signed transactions for every step.");
+        }
 
-        await algosdk.waitForConfirmation(algod, txid, 8);
+        const lastTxid = await submitGroupsSequentially(groups, signed, opts.opLabel, appId);
 
         toast({
-            title: "Claimed",
-            msg: `Rewards are back in your wallet.`,
+            title: opts.successTitle,
+            msg: opts.successMsg,
             state: "success",
-            txId: txid,
+            txId: lastTxid,
         });
+
         await scan();
     } catch (err) {
         pending.dismiss();
-        toast({ title: "Claim failed", msg: decodeError(err), state: "error" });
+        toast({ title: opts.failureTitle, msg: decodeError(err), state: "error" });
     }
+}
+
+async function submitGroupsSequentially(
+    groups: ReadonlyArray<TxnGroup>,
+    signedAll: ReadonlyArray<Uint8Array>,
+    opLabel: string,
+    appId: number,
+): Promise<string> {
+    let cursor = 0;
+    let lastTxid = "";
+    for (let i = 0; i < groups.length; i++) {
+        const g = groups[i];
+        const slice = signedAll.slice(cursor, cursor + g.txns.length);
+        cursor += g.txns.length;
+
+        const stepLabel = describeGroupSteps(g.steps);
+        const pending = toast({
+            title: `${opLabel} · App ${appId}`,
+            msg: `Submitting ${stepLabel} (step ${i + 1} of ${groups.length})…`,
+            state: "pending",
+        });
+
+        try {
+            const { txid } = await algod.sendRawTransaction(slice).do();
+            await algosdk.waitForConfirmation(algod, txid, 8);
+            lastTxid = txid;
+        } finally {
+            pending.dismiss();
+        }
+    }
+    return lastTxid;
+}
+
+function describeGroupSteps(steps: ReadonlyArray<string>): string {
+    if (steps.length === 1) return steps[0].replace(/-/g, " ");
+    return steps.map((s) => s.replace(/-/g, " ")).join(" + ");
 }
 
 function explainSimulateError(sim: SimulateResult, farm: Farm): string {
     const base = sim.error ?? "Simulation failed.";
-    if (sim.rawFailure) console.warn("simulate failure", { failedAt: sim.failedAt, step: sim.failedStep, raw: sim.rawFailure });
+    if (sim.rawFailure) {
+        console.warn("simulate failure", {
+            group: sim.failedGroupIndex,
+            step: sim.failedStep,
+            raw: sim.rawFailure,
+        });
+    }
 
     switch (sim.failedStep) {
         case "unstake": {
