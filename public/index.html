@@ -145,10 +145,25 @@
             <details class="faq">
                 <summary>Why might a withdraw fail?</summary>
                 <p>
-                    Usually a contract lock period that has not elapsed yet, or
-                    not quite enough ALGO to cover the inner-transaction fee
-                    bump (about 0.004 ALGO). The simulate step catches both and
-                    shows the on-chain reason before your wallet pops.
+                    Usually a contract lock period that has not elapsed yet,
+                    or not quite enough ALGO to cover the inner-transaction
+                    fee bump (about 0.004 ALGO). When the page can simulate
+                    your call ahead of time it shows the on-chain reason
+                    before your wallet pops; on the first withdraw against a
+                    new asset it submits an opt-in first and the simulate
+                    step is skipped, so a wallet rejection is the first
+                    signal there.
+                </p>
+            </details>
+            <details class="faq">
+                <summary>Why am I asked to confirm more than once on a withdraw?</summary>
+                <p>
+                    The Cometa contracts only accept one application call per
+                    group, so claim and unstake go in separately. You sign
+                    everything in one wallet prompt; the page then submits
+                    each step on its own and waits for confirmation between
+                    them. ASA opt-ins ride in front when the receiving
+                    account needs them.
                 </p>
             </details>
 

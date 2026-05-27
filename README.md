@@ -4,6 +4,7 @@ An open-source community interface for the [Cometa](https://cometa.farm/) farmin
 contracts on Algorand mainnet. Connect your wallet, see your positions, withdraw or
 claim rewards — directly against the existing on-chain contracts.
 
+**Live at <https://corvidlabs.github.io/open-cometa/>.**
 **Not affiliated with Cometa.** Calls only the existing on-chain contracts. Your keys
 never leave your wallet.
 
@@ -20,8 +21,11 @@ that interface, open-source, no backend, no analytics.
 - Connects via [@txnlab/use-wallet](https://github.com/TxnLab/use-wallet) — supports
   Pera, Defly, Lute, Exodus, Kibisis.
 - Reads on-chain local state from Algonode and surfaces the user's positions.
-- For each position, builds the appropriate `claim()` + `unstake(amount)` calls in a
-  group transaction with the correct fee bump.
+- For each position, builds the appropriate `claim()` and `unstake(amount)` calls. The
+  Cometa approval program asserts `GroupSize == 1` at the tail of every handler, so
+  claim and unstake are sent as **separate groups** — bundled into a single wallet
+  prompt, but submitted independently with confirmation between steps. ASA opt-ins for
+  the reward / stake assets ride along when needed.
 - Asks the wallet to sign, submits, waits for confirmation.
 
 The transaction shape (`appArgs`, `accounts`, `foreignAssets`) is derived empirically
@@ -79,6 +83,19 @@ This is a small surface to audit, intentionally:
   the contract sends your stake and rewards back via inner transactions.
 
 If something looks wrong, don't sign. [File an issue.](https://github.com/CorvidLabs/open-cometa/issues)
+
+## Releases
+
+`v0.1.0` — first community-tested release. Confirmed working against a real mainnet
+farm position with both staked and reward assets returned. Earlier
+revisions of this UI bundled `[claim, unstake]` into one group and tripped the
+contract's `GroupSize == 1` assertion (`pc=4058`); that's resolved in this version.
+
+## Contributing
+
+Issues and PRs welcome. The codebase is small enough that you can read it end-to-end
+in an afternoon. Open an issue first for anything that changes transaction shape so we
+can sanity-check against the contract bytecode before signing on mainnet.
 
 ## License
 
