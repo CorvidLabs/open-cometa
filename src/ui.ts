@@ -181,13 +181,13 @@ export function toast(opts: ToastOptions): { dismiss: () => void } {
 }
 
 export function setWalletButtonsEnabled(enabled: boolean): void {
-    document.querySelectorAll<HTMLButtonElement>(".wallet-btn").forEach((b) => {
+    document.querySelectorAll<HTMLButtonElement>(".wallet").forEach((b) => {
         b.disabled = !enabled;
     });
 }
 
 export function bindWalletButtons(handler: (id: string) => void): void {
-    document.querySelectorAll<HTMLButtonElement>(".wallet-btn").forEach((b) => {
+    document.querySelectorAll<HTMLButtonElement>(".wallet").forEach((b) => {
         const wallet = b.dataset.wallet;
         if (!wallet) return;
         b.addEventListener("click", () => handler(wallet));
