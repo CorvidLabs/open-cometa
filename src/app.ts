@@ -61,23 +61,60 @@ async function refreshNetworkStatus(): Promise<void> {
     }
 }
 
+const KIBISIS_DETECT_TIMEOUT_MS = 5000;
+
 async function onWalletClick(walletId: string): Promise<void> {
     const id = walletId as WalletId;
     if (!Object.values(WalletId).includes(id)) return;
     setWalletButtonsEnabled(false);
     try {
-        const account = await wallet.connect(id);
+        const account = await connectWithFriendlyErrors(id);
         if (!account) {
             toast({ title: "Cancelled", msg: "No account selected.", state: "info" });
             return;
         }
         await onConnected(account.address, WALLET_NAME_MAP[id] ?? id);
     } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        toast({ title: "Connection failed", msg, state: "error" });
+        toast({ title: "Connection failed", msg: walletConnectErrorMsg(err, id), state: "error" });
     } finally {
         setWalletButtonsEnabled(true);
     }
+}
+
+async function connectWithFriendlyErrors(id: WalletId) {
+    if (id === WalletId.KIBISIS) {
+        // Kibisis's ARC-0027 enable call hangs for the SDK's DEFAULT_REQUEST_TIMEOUT
+        // (3 minutes) when no extension is installed to answer. Race against a short
+        // detection timeout so the user sees an actionable message instead of a
+        // silently spinning button. The lost connect promise stays pending in the
+        // background until the SDK times out — harmless, no user-visible effect.
+        const TIMEOUT = Symbol("kibisis-timeout");
+        const result = await Promise.race([
+            wallet.connect(id),
+            new Promise<typeof TIMEOUT>((resolve) =>
+                setTimeout(() => resolve(TIMEOUT), KIBISIS_DETECT_TIMEOUT_MS),
+            ),
+        ]);
+        if (result === TIMEOUT) {
+            throw new Error("kibisis-not-detected");
+        }
+        return result;
+    }
+    return wallet.connect(id);
+}
+
+function walletConnectErrorMsg(err: unknown, id: WalletId): string {
+    const raw = err instanceof Error ? err.message : String(err);
+    if (id === WalletId.KIBISIS && raw === "kibisis-not-detected") {
+        return "Kibisis extension not detected. Install it from kibisis.io and reload the page.";
+    }
+    if (id === WalletId.EXODUS && /Exodus is not available/i.test(raw)) {
+        return "Exodus extension not detected. Install the Exodus browser extension and reload the page.";
+    }
+    if (id === WalletId.LUTE && /pop[- ]?up|popup blocked|window\.open/i.test(raw)) {
+        return "Browser blocked Lute's popup. Allow popups for this site and try again.";
+    }
+    return raw;
 }
 
 async function onConnected(address: string, walletName: string, readOnly = false): Promise<void> {
@@ -373,10 +410,24 @@ async function main(): Promise<void> {
     }
 
     void prewarmCommonTemplates();
+    void prewarmLuteClient();
 }
 
 async function prewarmCommonTemplates(): Promise<void> {
     void getCallTemplate(1513593394).catch(() => undefined);
+}
+
+async function prewarmLuteClient(): Promise<void> {
+    // LuteWallet.connect() dynamically imports lute-connect, which calls
+    // window.open() inside its connect Promise. If the dynamic import isn't
+    // cached, browsers can break the user-gesture chain between click and
+    // window.open and silently block the popup. Caching the module ahead of
+    // time keeps the popup synchronous from the wallet's perspective.
+    try {
+        await import("lute-connect");
+    } catch {
+        // Lute connect is optional; failing to preload is non-fatal.
+    }
 }
 
 void main();
