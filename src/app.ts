@@ -4,7 +4,8 @@ import { WalletId } from "@txnlab/use-wallet";
 import { algod, fetchAccount } from "./algorand.ts";
 import { ALL_FARMS } from "./farms.ts";
 import { findCometaPositions, type Position } from "./positions.ts";
-import { buildCloseOutTxn, buildWithdrawAndClaim, getCallTemplate, simulateGroup } from "./cometa.ts";
+import { buildCloseOutTxn, buildWithdrawAndClaim, getCallTemplate, simulateGroup, type SimulateResult } from "./cometa.ts";
+import type { Farm } from "./farms.ts";
 import { WalletSession } from "./wallet.ts";
 import {
     bindCopyAddress,
@@ -162,19 +163,19 @@ async function onWithdraw(appId: number): Promise<void> {
         const account = await fetchAccount(currentAccount.address);
         const optedInAssets = new Set(account.assets.map((a) => a.assetId));
 
-        const { txns } = await buildWithdrawAndClaim({
+        const { txns, steps } = await buildWithdrawAndClaim({
             sender: currentAccount.address,
             appId,
             stakedAmount: pos.staked,
             optedInAssets,
         });
 
-        const sim = await simulateGroup(txns);
+        const sim = await simulateGroup(txns, steps);
         if (!sim.ok) {
             pending.dismiss();
             toast({
                 title: "Network rejected the call",
-                msg: sim.error ?? "Simulation failed. Nothing was signed.",
+                msg: explainSimulateError(sim, pos.farm),
                 state: "error",
             });
             return;
@@ -240,19 +241,19 @@ async function onClaim(appId: number): Promise<void> {
         const account = await fetchAccount(currentAccount.address);
         const optedInAssets = new Set(account.assets.map((a) => a.assetId));
 
-        const { txns } = await buildWithdrawAndClaim({
+        const { txns, steps } = await buildWithdrawAndClaim({
             sender: currentAccount.address,
             appId,
             stakedAmount: 0n,
             optedInAssets,
         });
 
-        const sim = await simulateGroup(txns);
+        const sim = await simulateGroup(txns, steps);
         if (!sim.ok) {
             pending.dismiss();
             toast({
                 title: "Network rejected the call",
-                msg: sim.error ?? "Simulation failed. Nothing was signed.",
+                msg: explainSimulateError(sim, pos.farm),
                 state: "error",
             });
             return;
@@ -288,6 +289,31 @@ async function onClaim(appId: number): Promise<void> {
     } catch (err) {
         pending.dismiss();
         toast({ title: "Claim failed", msg: decodeError(err), state: "error" });
+    }
+}
+
+function explainSimulateError(sim: SimulateResult, farm: Farm): string {
+    const base = sim.error ?? "Simulation failed.";
+    if (sim.rawFailure) console.warn("simulate failure", { failedAt: sim.failedAt, step: sim.failedStep, raw: sim.rawFailure });
+
+    switch (sim.failedStep) {
+        case "unstake": {
+            const hints: string[] = [];
+            if (farm.lockBlocks > 0) {
+                const days = Math.max(1, Math.round((farm.lockBlocks * 2.9) / 86400));
+                hints.push(`The contract enforces a ~${days}-day lock on staked funds; if you staked recently, withdraw will fail until the lock elapses.`);
+            }
+            hints.push("Also possible: not quite enough ALGO to cover the inner-transaction fee bump (~0.004 ALGO).");
+            return `Unstake step failed: ${base}. ${hints.join(" ")}`;
+        }
+        case "claim":
+            return `Claim step failed: ${base}. The reward pool may be empty, or you may have already claimed this round.`;
+        case "opt-in-reward":
+            return `Couldn't opt in to the reward asset (${base}). Check that your wallet has enough ALGO for the asset min-balance bump (0.1 ALGO).`;
+        case "opt-in-stake":
+            return `Couldn't opt in to the stake asset (${base}). Check that your wallet has enough ALGO for the asset min-balance bump (0.1 ALGO).`;
+        default:
+            return base;
     }
 }
 

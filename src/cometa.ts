@@ -157,8 +157,11 @@ export function buildUnstakeTxn(p: BuildCallParams & { amount: bigint }): algosd
     });
 }
 
+export type TxnStep = "opt-in-reward" | "opt-in-stake" | "claim" | "unstake";
+
 export interface PositionWithdrawTxns {
     txns: algosdk.Transaction[];
+    steps: TxnStep[];
     rewardAssetId: number | null;
     stakeAssetId: number | null;
 }
@@ -176,6 +179,7 @@ export async function buildWithdrawAndClaim(params: {
     const rewardAssetId = template.foreignAssetsClaim[0] ?? null;
 
     const txns: algosdk.Transaction[] = [];
+    const steps: TxnStep[] = [];
 
     if (rewardAssetId !== null && rewardAssetId !== 0 && !params.optedInAssets.has(rewardAssetId)) {
         txns.push(
@@ -187,6 +191,7 @@ export async function buildWithdrawAndClaim(params: {
                 suggestedParams,
             }),
         );
+        steps.push("opt-in-reward");
     }
     if (
         stakeAssetId !== null &&
@@ -203,6 +208,7 @@ export async function buildWithdrawAndClaim(params: {
                 suggestedParams,
             }),
         );
+        steps.push("opt-in-stake");
     }
 
     txns.push(
@@ -213,6 +219,7 @@ export async function buildWithdrawAndClaim(params: {
             suggestedParams,
         }),
     );
+    steps.push("claim");
 
     if (params.stakedAmount > 0n) {
         txns.push(
@@ -224,20 +231,26 @@ export async function buildWithdrawAndClaim(params: {
                 suggestedParams,
             }),
         );
+        steps.push("unstake");
     }
 
     if (txns.length > 1) algosdk.assignGroupID(txns);
 
-    return { txns, rewardAssetId, stakeAssetId };
+    return { txns, steps, rewardAssetId, stakeAssetId };
 }
 
 export interface SimulateResult {
     ok: boolean;
     error: string | null;
     failedAt: number | null;
+    failedStep: TxnStep | null;
+    rawFailure: string | null;
 }
 
-export async function simulateGroup(txns: ReadonlyArray<algosdk.Transaction>): Promise<SimulateResult> {
+export async function simulateGroup(
+    txns: ReadonlyArray<algosdk.Transaction>,
+    steps?: ReadonlyArray<TxnStep>,
+): Promise<SimulateResult> {
     const signedTxns = txns.map((t) =>
         algosdk.decodeSignedTransaction(algosdk.encodeUnsignedSimulateTransaction(t)),
     );
@@ -249,15 +262,21 @@ export async function simulateGroup(txns: ReadonlyArray<algosdk.Transaction>): P
     });
     const response = await algod.simulateTransactions(request).do();
     const group = response.txnGroups[0];
-    if (!group) return { ok: false, error: "No simulation result returned.", failedAt: null };
+    if (!group) {
+        return { ok: false, error: "No simulation result returned.", failedAt: null, failedStep: null, rawFailure: null };
+    }
     if (group.failureMessage) {
+        const failedAt = group.failedAt?.[0] !== undefined ? Number(group.failedAt[0]) : null;
+        const failedStep = failedAt !== null && steps ? steps[failedAt] ?? null : null;
         return {
             ok: false,
             error: cleanSimulateError(group.failureMessage),
-            failedAt: group.failedAt?.[0] !== undefined ? Number(group.failedAt[0]) : null,
+            failedAt,
+            failedStep,
+            rawFailure: group.failureMessage,
         };
     }
-    return { ok: true, error: null, failedAt: null };
+    return { ok: true, error: null, failedAt: null, failedStep: null, rawFailure: null };
 }
 
 function cleanSimulateError(raw: string): string {
