@@ -3,7 +3,7 @@
 
 [tasks]
 dev = "bun run src/server.ts"
-build = "bun build src/app.ts --outdir public/dist --target browser --format esm --minify --sourcemap=external"
+build = "bun build src/app.ts --outdir public/dist --target browser --format esm --minify --sourcemap=external --define global=globalThis"
 
 [tasks.install]
 cmd = "bun install --frozen-lockfile"
