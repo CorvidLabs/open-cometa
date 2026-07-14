@@ -2,9 +2,9 @@
 # Docs: https://github.com/CorvidLabs/spec-sync
 
 specs_dir = "specs"
-source_dirs = ["src"]
-exclude_dirs = []
-exclude_patterns = []
+source_dirs = ["src", "public"]
+exclude_dirs = ["dist"]
+exclude_patterns = ["**/dist/**"]
 required_sections = ["Purpose", "Public API", "Invariants", "Behavioral Examples", "Error Cases", "Dependencies", "Change Log"]
 enforcement = "strict"
 

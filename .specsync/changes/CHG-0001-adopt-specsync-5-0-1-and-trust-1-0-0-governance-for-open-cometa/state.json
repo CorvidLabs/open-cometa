@@ -5,10 +5,11 @@
   "title": "Adopt SpecSync 5.0.1 and Trust 1.0.0 governance for Open Cometa",
   "description": "Adopt SpecSync 5.0.1 and Trust 1.0.0 governance for Open Cometa",
   "kind": "migration",
-  "state": "draft",
+  "state": "accepted",
+  "canonical_applied": true,
   "base_commit": "68d6cf4ddef6e4a674a7d6fa4ebceddcfd4cf8ef",
   "created_at": 1783887310,
-  "updated_at": 1783887317,
+  "updated_at": 1784018437,
   "affected_specs": [],
   "affected_paths": [
     ".github/",

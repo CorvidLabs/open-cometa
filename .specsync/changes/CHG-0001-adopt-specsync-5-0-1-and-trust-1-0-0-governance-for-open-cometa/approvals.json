@@ -1,3 +1,61 @@
 {
-  "approvals": []
+  "approvals": [
+    {
+      "gate": "definition",
+      "actor": "user:0xLeif",
+      "timestamp": 1784017882,
+      "digest": "030a10b602e89ef0918d20ade74380504c61af7088f0a630945ba02661a1b29a",
+      "note": "Definition approval for the governance-only SpecSync 5.0.1 and immutable Trust 1.0.0 migration; hosted CI is not claimed."
+    },
+    {
+      "gate": "acceptance",
+      "actor": "user:0xLeif",
+      "timestamp": 1784018292,
+      "digest": "c7167ed8a2be6c7e5de074b6f2250451a3fbe718ac318c53d87753277d029f22",
+      "note": "Closing approval after the frozen Bun install, strict TypeScript check, production bundle, size assertion, and full Trust gate passed locally; hosted CI is not claimed."
+    },
+    {
+      "gate": "acceptance",
+      "actor": "user:0xLeif",
+      "timestamp": 1784018437,
+      "digest": "1f26505a58c38093619ba95c18bfd7c8cdabd740d27e399947d4158cba6f536e",
+      "note": "Fresh closing approval after stable registry identity correction and successful frozen install, typecheck, production bundle, size gate, and full 100 percent contract verification; hosted CI is not claimed."
+    }
+  ],
+  "reopenings": [
+    {
+      "schema_version": 1,
+      "change_id": "CHG-0001-adopt-specsync-5-0-1-and-trust-1-0-0-governance-for-open-cometa",
+      "actor": "user:0xLeif",
+      "reason": "Replace the rollout worktree label in the SpecSync registry with the repository's stable public identity.",
+      "timestamp": 1784018417,
+      "from_state": "accepted",
+      "to_state": "verifying",
+      "superseded_approval": {
+        "gate": "acceptance",
+        "actor": "user:0xLeif",
+        "timestamp": 1784018292,
+        "digest": "c7167ed8a2be6c7e5de074b6f2250451a3fbe718ac318c53d87753277d029f22",
+        "note": "Closing approval after the frozen Bun install, strict TypeScript check, production bundle, size assertion, and full Trust gate passed locally; hosted CI is not claimed."
+      },
+      "prior_verification": {
+        "timestamp": 1784018279,
+        "commit": "6a659c12d80f3b1f74b69a64542ed36d12403ba9",
+        "contract_digest": "030a10b602e89ef0918d20ade74380504c61af7088f0a630945ba02661a1b29a",
+        "workspace_digest": "4e705f2f0d146cf73edc9865fc4f440c0054e897840f67d79658d765c788eb67",
+        "acceptance_input_digest": "f8edfa5abce8a9af21eb999a691b148d2f2b161a88f3ad3befc0f152d147a61b",
+        "passed": true,
+        "commands": [
+          {
+            "command": "fledge lanes run verify",
+            "success": true,
+            "exit_code": 0
+          }
+        ],
+        "requirement_ids": []
+      },
+      "stale_acceptance_input_digest": "f8edfa5abce8a9af21eb999a691b148d2f2b161a88f3ad3befc0f152d147a61b",
+      "current_acceptance_input_digest": "1d5f1ff1f39b14fc911214e6ca864be6a0b6845bf17786e5a0b68d8a771f790b"
+    }
+  ]
 }

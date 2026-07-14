@@ -1,6 +1,6 @@
 ---
 id: CHG-0001-adopt-specsync-5-0-1-and-trust-1-0-0-governance-for-open-cometa
-state: draft
+state: accepted
 type: migration
 base_commit: 68d6cf4ddef6e4a674a7d6fa4ebceddcfd4cf8ef
 ---

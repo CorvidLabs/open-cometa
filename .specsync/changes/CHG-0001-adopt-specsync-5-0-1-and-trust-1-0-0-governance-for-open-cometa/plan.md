@@ -10,4 +10,4 @@ artifact: plan
 3. Expose the existing deterministic CI checks as a Fledge verification lane.
 4. Add standard Trust, Augur, and Attest policy.
 5. Preserve CI and Pages deployment.
-6. Validate locally and hosted.
+6. Validate the migration through the native lane and leave hosted execution to the pull-request gate.
