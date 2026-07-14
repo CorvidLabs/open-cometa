@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "id": "CHG-0002-document-the-complete-existing-open-cometa-browser-wallet-farm-transaction-u",
+  "slug": "document-the-complete-existing-open-cometa-browser-wallet-farm-transaction-u",
+  "title": "Document the complete existing Open Cometa browser, wallet, farm, transaction, UI, and development-server contract",
+  "description": "Document the complete existing Open Cometa browser, wallet, farm, transaction, UI, and development-server contract",
+  "kind": "documentation",
+  "state": "accepted",
+  "canonical_applied": true,
+  "base_commit": "6a659c12d80f3b1f74b69a64542ed36d12403ba9",
+  "created_at": 1784017802,
+  "updated_at": 1784018356,
+  "affected_specs": [
+    "open-cometa"
+  ],
+  "affected_paths": [
+    "specs/open-cometa/",
+    "src/",
+    "public/",
+    ".specsync/change-sequence.json"
+  ],
+  "no_spec_change": false,
+  "no_spec_change_rationale": null,
+  "acceptance_criteria": [
+    "The stable canonical companion maps all nine TypeScript modules and public assets with 100 percent measured file LOC and exported-symbol coverage; fifteen concrete requirements describe existing behavior without product changes; locked install typecheck production build and 5 MiB size verification pass"
+  ],
+  "selected_artifacts": [
+    "context",
+    "docs"
+  ],
+  "dependencies": [],
+  "answers": {
+    "architecture_risk": "no",
+    "public_contract": "no"
+  }
+}

@@ -22,3 +22,7 @@ deps = ["build"]
 cmd = "echo 'ci complete'"
 description = "Run full CI checks (typecheck + build + size budget)"
 deps = ["install", "typecheck", "size"]
+
+[lanes.verify]
+description = "Install, type-check, build, and enforce the production bundle budget"
+steps = ["ci"]

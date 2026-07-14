@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "id": "CHG-0001-adopt-specsync-5-0-1-and-trust-1-0-0-governance-for-open-cometa",
+  "slug": "adopt-specsync-5-0-1-and-trust-1-0-0-governance-for-open-cometa",
+  "title": "Adopt SpecSync 5.0.1 and Trust 1.0.0 governance for Open Cometa",
+  "description": "Adopt SpecSync 5.0.1 and Trust 1.0.0 governance for Open Cometa",
+  "kind": "migration",
+  "state": "accepted",
+  "canonical_applied": true,
+  "base_commit": "68d6cf4ddef6e4a674a7d6fa4ebceddcfd4cf8ef",
+  "created_at": 1783887310,
+  "updated_at": 1784018437,
+  "affected_specs": [],
+  "affected_paths": [
+    ".github/",
+    ".specsync/",
+    ".trust.toml",
+    ".augur.toml",
+    ".attest.json",
+    "AGENTS.md",
+    "fledge.toml"
+  ],
+  "no_spec_change": true,
+  "no_spec_change_rationale": "This migration adds governance configuration and CI orchestration without changing Open Cometa behavior; future meaningful application changes must add or update canonical specifications.",
+  "acceptance_criteria": [
+    "SpecSync advisory coverage passes; all four integrations are installed; Trust doctor passes; locked dependency installation",
+    "TypeScript checking",
+    "production browser build",
+    "and the 5 MB bundle budget pass; existing CI and Pages deployment remain green."
+  ],
+  "selected_artifacts": [
+    "context",
+    "research",
+    "design",
+    "plan",
+    "tasks",
+    "testing",
+    "docs"
+  ],
+  "dependencies": [],
+  "answers": {
+    "architecture_risk": "yes",
+    "public_contract": "no"
+  }
+}

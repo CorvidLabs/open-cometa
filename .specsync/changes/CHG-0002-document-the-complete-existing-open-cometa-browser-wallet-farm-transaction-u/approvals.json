@@ -1,0 +1,77 @@
+{
+  "approvals": [
+    {
+      "gate": "definition",
+      "actor": "user:0xLeif",
+      "timestamp": 1784017883,
+      "digest": "370b8c96b5072e522940bbaf64064a4858dee21a9355e498d60499f0d8e541fa",
+      "note": "Definition approval for the audited existing Open Cometa contract with 15 concrete requirements and complete measured source/API coverage; no product behavior changes."
+    },
+    {
+      "gate": "acceptance",
+      "actor": "user:0xLeif",
+      "timestamp": 1784018292,
+      "digest": "67395761caba0c932e58f6e94f8eed68961bf41dcbc5905fedb61837486799ab",
+      "note": "Closing approval after complete 9/9 file, 1367/1367 LOC, 51/51 export coverage and mapped evidence for all 15 requirements passed with no product changes; hosted CI is not claimed."
+    },
+    {
+      "gate": "acceptance",
+      "actor": "user:0xLeif",
+      "timestamp": 1784018356,
+      "digest": "098b47f91e997750a2039f44dcf2ee1933b7b024b0a5fb2f19a6c4150950444e",
+      "note": "Fresh closing approval after canonical normalization and successful frozen install, typecheck, production bundle, size gate, and complete 15-requirement evidence; hosted CI is not claimed."
+    }
+  ],
+  "reopenings": [
+    {
+      "schema_version": 1,
+      "change_id": "CHG-0002-document-the-complete-existing-open-cometa-browser-wallet-farm-transaction-u",
+      "actor": "user:0xLeif",
+      "reason": "Remove the pre-accept summary list after supported semantic delta application so each requirement ID has one canonical detailed entry.",
+      "timestamp": 1784018334,
+      "from_state": "accepted",
+      "to_state": "verifying",
+      "superseded_approval": {
+        "gate": "acceptance",
+        "actor": "user:0xLeif",
+        "timestamp": 1784018292,
+        "digest": "67395761caba0c932e58f6e94f8eed68961bf41dcbc5905fedb61837486799ab",
+        "note": "Closing approval after complete 9/9 file, 1367/1367 LOC, 51/51 export coverage and mapped evidence for all 15 requirements passed with no product changes; hosted CI is not claimed."
+      },
+      "prior_verification": {
+        "timestamp": 1784018285,
+        "commit": "6a659c12d80f3b1f74b69a64542ed36d12403ba9",
+        "contract_digest": "370b8c96b5072e522940bbaf64064a4858dee21a9355e498d60499f0d8e541fa",
+        "workspace_digest": "4e705f2f0d146cf73edc9865fc4f440c0054e897840f67d79658d765c788eb67",
+        "acceptance_input_digest": "ad7532a76d44b3b4d20c53f1eb26140f2a8ec266bf543068c518476b2e08c29d",
+        "passed": true,
+        "commands": [
+          {
+            "command": "fledge lanes run verify",
+            "success": true,
+            "exit_code": 0
+          }
+        ],
+        "requirement_ids": [
+          "REQ-open-cometa-001",
+          "REQ-open-cometa-002",
+          "REQ-open-cometa-003",
+          "REQ-open-cometa-004",
+          "REQ-open-cometa-005",
+          "REQ-open-cometa-006",
+          "REQ-open-cometa-007",
+          "REQ-open-cometa-008",
+          "REQ-open-cometa-009",
+          "REQ-open-cometa-010",
+          "REQ-open-cometa-011",
+          "REQ-open-cometa-012",
+          "REQ-open-cometa-013",
+          "REQ-open-cometa-014",
+          "REQ-open-cometa-015"
+        ]
+      },
+      "stale_acceptance_input_digest": "ad7532a76d44b3b4d20c53f1eb26140f2a8ec266bf543068c518476b2e08c29d",
+      "current_acceptance_input_digest": "7d2cee3be7896df9205d5b307dd6c5d3cbf32d7800347a80fe13d0b52b38ff42"
+    }
+  ]
+}
